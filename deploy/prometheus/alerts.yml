@@ -1,0 +1,30 @@
+groups:
+  - name: golink
+    rules:
+      - alert: GolinkDown
+        expr: up{job="golink"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "golink is not responding to Prometheus scrapes"
+
+      - alert: GolinkHigh5xxRate
+        expr: |
+          sum(rate(golink_http_requests_total{status=~"5.."}[5m]))
+            / sum(rate(golink_http_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "More than 5% of golink requests are failing with 5xx"
+
+      - alert: GolinkSlowRedirects
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(golink_http_request_duration_seconds_bucket{route="GET /{code}"}[5m]))) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 redirect latency is above 100ms"
